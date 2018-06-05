@@ -1,0 +1,151 @@
+---
+title: "Predicting weight-lifting technique from motion data"
+author: "Rachel Karpman"
+date: "June 5, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE, message = FALSE)
+```
+
+## Introduction
+
+In this report, we analyse the [Weight Lifting Exercises data set](http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har) of Ugulino et al. For this data set, subjects performed a simple weightlifting exercise correctly (coded as class `A`); or in one of four incorrect ways (coded as classes `B` through `E`).  The subjects' movements were recorded via wearable sensors.  
+Using the Random Forest algorithm, we build a model to predict the class of an exercise attempt based on motion data.  Our model's out-of-sample accuracy is estimated at over 99%. We then use the model to correctly predict `20` test cases.
+
+## Cleaning the data
+
+We first load that data, noting that missing values may appear either as `NA` or as empty cells.
+
+```{r}
+training <- read.csv("training.csv", stringsAsFactors = FALSE, 
+                     na.strings = c("NA", ""))
+testing <- read.csv("testing.csv", stringsAsFactors = FALSE, 
+                    na.strings = c("NA", ""))
+```
+
+This dataset has many missing values.  We delete columns where most of the values are missing.
+
+```{r}
+## Calculate fraction of values which are missing
+fracNA <- function(myVect){
+    sum(sapply(myVect, is.na))/length(myVect)
+}
+
+## Delete columns where more than 90% of values are missing
+colFracs <- sapply(training, fracNA)
+goodCols <- which(colFracs < 0.1)
+training <- training[, goodCols]
+testing <- testing[, goodCols]
+```
+
+The first few columns record data such as time of observation, or name of subject. These columns may give extra clues about the class of an observation, so we delete them to avoid overfitting.
+
+```{r}
+## Delete columns which are not physical measurements
+training <- training[, 8:60]
+training$classe <- factor(training$classe)
+testing <- testing[, 8:59]
+```
+
+We save the predictors and response as separate data frames for later use.
+
+```{r}
+predictors <- training[ , -53]
+response <- training[ , 53]
+```
+
+## Exploratory analysis
+
+We check whether any of the predictors are highly correlated with the outcome. We find that none of the correlations are very strong.
+
+```{r}
+## Create a data frame containing the absolute values
+## of the correlation of each predictor with the outcome
+absCorrs <- abs(cor(as.matrix(predictors), 
+                    as.matrix(as.numeric(response))))
+## Find the mean and four quartiles of the absolute values of the correlations
+summary(absCorrs)
+```
+
+We next try a feature plot of the five predictors most correlated with the outcome.  Note that the ranges for each class have a large amount of overlap.
+
+```{r}
+library(caret)
+bestPreds <- training[, which(absCorrs > 0.2)]
+featurePlot(bestPreds, response, plot = "box")
+```
+
+Based on this preliminary exploration, building an easily interpretable model for this dataset is likely to be difficult.  Instead, we use the popular algorithm Random Forest.  Although Random Forest models can be computationally intensive and difficult to interpret, they tend to be highly accurate.
+
+## Training the model
+
+We train a Random Forest model using the `caret` package.  To reduce computing time, we follow the suggestions in Leon Gretski's excellent tutorial [Improving performance of Random Forest in `caret::train`](https://github.com/lgreski/datasciencectacontent/blob/master/markdown/pml-randomForestPerformance.md)
+
+We configure parallel processing using the `parallel` and `doParallel`, which allows the Random Forest computation to run more quickly.  
+
+```{r cache = FALSE}
+## Configure parallel processing
+library(parallel)
+library(doParallel)
+cluster <- makeCluster(detectCores() - 1)
+registerDoParallel(cluster)
+```
+
+Following Gretski's advice, we replace the default bootstrap resampling with `5`-fold cross-validation, which is less computationally intensive.
+
+The only parameter that can be tuned in this model is `mtry`, the number of variables randomly sampled at each split.  For classification trees, the `randomForest` package gives the square root of the number of features as a default value for `mtry`, which gives `7` as the defalt in our case.  We test five different values of `mtry`, including `mtry = 7`.
+
+```{r}
+## Use five-fold cross validation
+fitControl <- trainControl(method = "cv", 
+                           number = 5, 
+                           allowParallel = TRUE)
+
+## Set the seed for reproducibility
+set.seed(1234)
+
+## Our potential values of mtry are 2, 7, 12, 17, and 22
+myGrid <- expand.grid(.mtry = seq(2, 22, 5))
+
+## Fit the model
+fit <- train(predictors,
+             response, 
+             method = "rf",
+             tuneGrid = myGrid,
+             trControl = fitControl)
+```
+
+```{r cache = FALSE}
+## De-register parallel processing cluster
+stopCluster(cluster)
+registerDoSEQ()
+```
+
+The value of `mtry` which gives the best accuracy is `mtry = 12`, as shown in the plot below.  This is the value used in our final model.
+
+```{r}
+plot(fit, main = "Finding the most accurlate value of mtry")
+```
+
+## Estimating out-of-sample accuracy.
+
+The `train` function in `caret` performs `5`-fold cross-validation while building model.  For the final model, `caret` reports the accuracy on each fold.  Averaging these results, we obtain an estimated out-of-sample accuracy of `r mean(fit$resample$Accuracy)`.  
+
+Note that this estimate is likely to be generous, due to possible overfitting; in reality, the out-of-sample accuracy may be significantly lower.
+
+```{r}
+## Get accuracy on each fold
+fit$resample
+## Average the estimates
+mean(fit$resample$Accuracy)
+```
+
+## Predicting on the test set
+
+Finally, we apply our model to the twenty cases from the testing dataset.  
+
+```{r}
+predict(fit$finalModel, newdata = testing)
+```

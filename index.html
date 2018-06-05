@@ -127,12 +127,12 @@ $(document).ready(function () {
 
 <div id="introduction" class="section level2">
 <h2>Introduction</h2>
-<p>In this report, we analyse the <a href="http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har">Weight Lifting Exercises data set</a> of Ugulino et al. For this data set, subjects performed a simple weightlifting exercise correctly (coded as class <code>A</code>); or in one of four incorrect ways (coded as classes <code>B</code> through <code>E</code>). The subjects’ movements were recorded via wearable sensors.<br />
-Using the Random Forest algorithm, we build a model to predict the class of an exercise attempt based on motion data. Our model’s out-of-sample accuracy is estimated at over 99%. We then use the model to correctly predict <code>20</code> test cases.</p>
+<p>In this report, we analyse the <a href="http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har">Weight Lifting Exercises data set</a> of Ugulino et al. For this data set, subjects performed a simple weightlifting exercise correctly (coded as class <code>A</code>); or in one of four incorrect ways (coded as classes <code>B</code> through <code>E</code>). The subjects’ movements were recorded via wearable sensors.</p>
+<p>Using the Random Forest algorithm, we build a model to predict the class of an exercise attempt based on motion data. Our model’s out-of-sample accuracy is estimated at over 99%. We then use the model to correctly predict 20 test cases.</p>
 </div>
 <div id="cleaning-the-data" class="section level2">
 <h2>Cleaning the data</h2>
-<p>We first load that data, noting that missing values may appear either as <code>NA</code> or as empty cells.</p>
+<p>We first load the data, noting that missing values may appear either as <code>NA</code> or as empty cells.</p>
 <pre class="r"><code>training &lt;- read.csv(&quot;training.csv&quot;, stringsAsFactors = FALSE, 
                      na.strings = c(&quot;NA&quot;, &quot;&quot;))
 testing &lt;- read.csv(&quot;testing.csv&quot;, stringsAsFactors = FALSE, 
@@ -159,7 +159,7 @@ response &lt;- training[ , 53]</code></pre>
 </div>
 <div id="exploratory-analysis" class="section level2">
 <h2>Exploratory analysis</h2>
-<p>We check whether any of the predictors are highly correlated with the outcome. We find that none of the correlations are very strong.</p>
+<p>We calculate the absolute value of the correlation of each predictor with the outcome. We find that none of the correlations are very strong.</p>
 <pre class="r"><code>## Create a data frame containing the absolute values
 ## of the correlation of each predictor with the outcome
 absCorrs &lt;- abs(cor(as.matrix(predictors), 
@@ -183,14 +183,14 @@ featurePlot(bestPreds, response, plot = &quot;box&quot;)</code></pre>
 <div id="training-the-model" class="section level2">
 <h2>Training the model</h2>
 <p>We train a Random Forest model using the <code>caret</code> package. To reduce computing time, we follow the suggestions in Leon Gretski’s excellent tutorial <a href="https://github.com/lgreski/datasciencectacontent/blob/master/markdown/pml-randomForestPerformance.md">Improving performance of Random Forest in <code>caret::train</code></a></p>
-<p>We configure parallel processing using the <code>parallel</code> and <code>doParallel</code>, which allows the Random Forest computation to run more quickly.</p>
+<p>We configure parallel processing using the <code>parallel</code> and <code>doParallel</code> packages, which allows the Random Forest computation to run more quickly.</p>
 <pre class="r"><code>## Configure parallel processing
 library(parallel)
 library(doParallel)
 cluster &lt;- makeCluster(detectCores() - 1)
 registerDoParallel(cluster)</code></pre>
 <p>Following Gretski’s advice, we replace the default bootstrap resampling with <code>5</code>-fold cross-validation, which is less computationally intensive.</p>
-<p>The only parameter that can be tuned in this model is <code>mtry</code>, the number of variables randomly sampled at each split. For classification trees, the <code>randomForest</code> package gives the square root of the number of features as a default value for <code>mtry</code>, which gives <code>7</code> as the defalt in our case. We test five different values of <code>mtry</code>, including <code>mtry = 7</code>.</p>
+<p>The only parameter that can be tuned in this model is <code>mtry</code>, the number of variables randomly sampled at each split. For classification trees, the <code>randomForest</code> package gives the square root of the number of features as a default value for <code>mtry</code>, which gives a deault of <code>7</code> in our case. We test five different values of <code>mtry</code>, including <code>mtry = 7</code>.</p>
 <pre class="r"><code>## Use five-fold cross validation
 fitControl &lt;- trainControl(method = &quot;cv&quot;, 
                            number = 5, 
@@ -217,7 +217,7 @@ registerDoSEQ()</code></pre>
 </div>
 <div id="estimating-out-of-sample-accuracy." class="section level2">
 <h2>Estimating out-of-sample accuracy.</h2>
-<p>The <code>train</code> function in <code>caret</code> performs <code>5</code>-fold cross-validation while building model. For the final model, <code>caret</code> reports the accuracy on each fold. Averaging these results, we obtain an estimated out-of-sample accuracy of 0.9961776.</p>
+<p>The <code>train</code> function in <code>caret</code> performs 5-fold cross-validation while building model. For the final model, <code>caret</code> reports the accuracy on each fold. Averaging these results, we obtain an estimated out-of-sample accuracy of 0.9961776.</p>
 <p>Note that this estimate is likely to be generous, due to possible overfitting; in reality, the out-of-sample accuracy may be significantly lower.</p>
 <pre class="r"><code>## Get accuracy on each fold
 fit$resample</code></pre>

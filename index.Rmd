@@ -11,12 +11,13 @@ knitr::opts_chunk$set(echo = TRUE, cache = TRUE, message = FALSE)
 
 ## Introduction
 
-In this report, we analyse the [Weight Lifting Exercises data set](http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har) of Ugulino et al. For this data set, subjects performed a simple weightlifting exercise correctly (coded as class `A`); or in one of four incorrect ways (coded as classes `B` through `E`).  The subjects' movements were recorded via wearable sensors.  
-Using the Random Forest algorithm, we build a model to predict the class of an exercise attempt based on motion data.  Our model's out-of-sample accuracy is estimated at over 99%. We then use the model to correctly predict `20` test cases.
+In this report, we analyse the [Weight Lifting Exercises data set](http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har) of Ugulino et al. For this data set, subjects performed a simple weightlifting exercise correctly (coded as class `A`); or in one of four incorrect ways (coded as classes `B` through `E`).  The subjects' movements were recorded via wearable sensors. 
+
+Using the Random Forest algorithm, we build a model to predict the class of an exercise attempt based on motion data.  Our model's out-of-sample accuracy is estimated at over 99%. We then use the model to correctly predict 20 test cases.
 
 ## Cleaning the data
 
-We first load that data, noting that missing values may appear either as `NA` or as empty cells.
+We first load the data, noting that missing values may appear either as `NA` or as empty cells.
 
 ```{r}
 training <- read.csv("training.csv", stringsAsFactors = FALSE, 
@@ -58,7 +59,7 @@ response <- training[ , 53]
 
 ## Exploratory analysis
 
-We check whether any of the predictors are highly correlated with the outcome. We find that none of the correlations are very strong.
+We calculate the absolute value of the correlation of each predictor with the outcome. We find that none of the correlations are very strong.
 
 ```{r}
 ## Create a data frame containing the absolute values
@@ -83,7 +84,7 @@ Based on this preliminary exploration, building an easily interpretable model fo
 
 We train a Random Forest model using the `caret` package.  To reduce computing time, we follow the suggestions in Leon Gretski's excellent tutorial [Improving performance of Random Forest in `caret::train`](https://github.com/lgreski/datasciencectacontent/blob/master/markdown/pml-randomForestPerformance.md)
 
-We configure parallel processing using the `parallel` and `doParallel`, which allows the Random Forest computation to run more quickly.  
+We configure parallel processing using the `parallel` and `doParallel` packages, which allows the Random Forest computation to run more quickly.  
 
 ```{r cache = FALSE}
 ## Configure parallel processing
@@ -95,7 +96,7 @@ registerDoParallel(cluster)
 
 Following Gretski's advice, we replace the default bootstrap resampling with `5`-fold cross-validation, which is less computationally intensive.
 
-The only parameter that can be tuned in this model is `mtry`, the number of variables randomly sampled at each split.  For classification trees, the `randomForest` package gives the square root of the number of features as a default value for `mtry`, which gives `7` as the defalt in our case.  We test five different values of `mtry`, including `mtry = 7`.
+The only parameter that can be tuned in this model is `mtry`, the number of variables randomly sampled at each split.  For classification trees, the `randomForest` package gives the square root of the number of features as a default value for `mtry`, which gives a deault of `7` in our case.  We test five different values of `mtry`, including `mtry = 7`.
 
 ```{r}
 ## Use five-fold cross validation
@@ -131,7 +132,7 @@ plot(fit, main = "Finding the most accurlate value of mtry")
 
 ## Estimating out-of-sample accuracy.
 
-The `train` function in `caret` performs `5`-fold cross-validation while building model.  For the final model, `caret` reports the accuracy on each fold.  Averaging these results, we obtain an estimated out-of-sample accuracy of `r mean(fit$resample$Accuracy)`.  
+The `train` function in `caret` performs 5-fold cross-validation while building model.  For the final model, `caret` reports the accuracy on each fold.  Averaging these results, we obtain an estimated out-of-sample accuracy of `r mean(fit$resample$Accuracy)`.  
 
 Note that this estimate is likely to be generous, due to possible overfitting; in reality, the out-of-sample accuracy may be significantly lower.
 

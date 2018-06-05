@@ -17,7 +17,7 @@ Using the Random Forest algorithm, we build a model to predict the class of an e
 
 ## Cleaning the data
 
-We first load the data, noting that missing values may appear either as `NA` or as empty cells.
+We first load the data, noting that both `NA` and empty cells represent missing data.
 
 ```{r}
 training <- read.csv("training.csv", stringsAsFactors = FALSE, 
@@ -94,9 +94,9 @@ cluster <- makeCluster(detectCores() - 1)
 registerDoParallel(cluster)
 ```
 
-Following Gretski's advice, we replace the default bootstrap resampling with `5`-fold cross-validation, which is less computationally intensive.
+Following Gretski's advice, we replace the default bootstrap resampling with 5-fold cross-validation, which is less computationally intensive.
 
-The only parameter that can be tuned in this model is `mtry`, the number of variables randomly sampled at each split.  For classification trees, the `randomForest` package gives the square root of the number of features as a default value for `mtry`, which gives a deault of `7` in our case.  We test five different values of `mtry`, including `mtry = 7`.
+The only parameter that can be tuned in this model is `mtry`, the number of variables randomly sampled at each split.  For classification trees, the `randomForest` package gives the square root of the number of features as a default value for `mtry`, which gives a default of 7 in our case.  We test five different values of `mtry`, including `mtry = 7`.
 
 ```{r}
 ## Use five-fold cross validation
@@ -127,14 +127,14 @@ registerDoSEQ()
 The value of `mtry` which gives the best accuracy is `mtry = 12`, as shown in the plot below.  This is the value used in our final model.
 
 ```{r}
-plot(fit, main = "Finding the most accurlate value of mtry")
+plot(fit, main = "Finding the best value of mtry")
 ```
 
 ## Estimating out-of-sample accuracy.
 
-The `train` function in `caret` performs 5-fold cross-validation while building model.  For the final model, `caret` reports the accuracy on each fold.  Averaging these results, we obtain an estimated out-of-sample accuracy of `r mean(fit$resample$Accuracy)`.  
+The `train` function in `caret` performs 5-fold cross-validation automatically while building the model.  For the final model, `caret` reports the accuracy on each fold.  Averaging these results, we obtain an estimated out-of-sample error rate of `r 1 - mean(fit$resample$Accuracy)`.  
 
-Note that this estimate is likely to be generous, due to possible overfitting; in reality, the out-of-sample accuracy may be significantly lower.
+Note that this estimate is likely to be generous, due to possible overfitting; in reality, the out-of-sample error may be higher.
 
 ```{r}
 ## Get accuracy on each fold
